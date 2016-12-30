@@ -6,7 +6,7 @@ var Chat = require('./chat')(io);
 
 app.use(express.static('htdocs'));
 
-var port;
+var port = 3000;
 if(process.argv[2] != undefined) {
   port = process.argv[2];
 }
