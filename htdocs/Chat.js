@@ -1,6 +1,6 @@
 var global = {
   joinedChat: false,
-  key: null
+  key: null,
 }
 
 $(document).ready(function(){
@@ -54,8 +54,9 @@ function joinChat(name) {
   $('form').submit(function(){
     var msg = $('#m').val()
     if(msg != "") {
+      var encrypted = CryptoJS.AES.encrypt(msg, global.key).toString();
       socket.emit('chat_message', {
-        message: CryptoJS.AES.encrypt(msg, global.key).toString()
+        message: encrypted
       });
       $('#m').val('');
     }

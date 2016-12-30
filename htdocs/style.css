@@ -30,6 +30,7 @@ li {
 }
 
 input {
+  width: 90%;
   color: #00ff00;
   border: none;
   background-color: black;

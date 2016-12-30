@@ -45,11 +45,11 @@ exports = module.exports = function(io) {
     args.shift();
 
     if(cmd == "rename") {
-      chatNSP.to(socket.id).emit('name_change', {newname: args[0]});
+      chatNSP.to(socket.id).emit('name_change', {newname: line});
     } else if(cmd == "hack") {
       sendChatMessage(socket,line,true);
     } else if(cmd == "users") {
-      chatNSP.to(socket.id).emit('info_message', {message: "Online users: " + clientAmount});
+      chatNSP.to(socket.id).emit('info_message', {message: CryptoJS.AES.encrypt("Online users: " + clientAmount, socket.key).toString()});
     } else if(cmd == "tts") {
       line = "<script> var msg = new SpeechSynthesisUtterance('" + socket.name + " said " + line + "'); window.speechSynthesis.speak(msg)</script>" + line;
       sendChatMessage(socket,line,true);
