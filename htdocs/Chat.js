@@ -1,6 +1,7 @@
 var global = {
   joinedChat: false,
   key: null,
+  extraKey: null
 }
 
 $(document).ready(function(){
@@ -54,17 +55,32 @@ function joinChat(name) {
   $('form').submit(function(){
     var msg = $('#m').val()
     if(msg != "") {
-      var encrypted = CryptoJS.AES.encrypt(msg, global.key).toString();
-      socket.emit('chat_message', {
-        message: encrypted
-      });
+      if(msg.startsWith(".extrakey")) {
+        msg = msg.substr(10);
+        global.extraKey = msg;
+        $('#messages').append('<li>ExtraKey set to "' + msg + '"</li>');
+      } else {
+        if(global.extraKey != null){
+          var encrypted = CryptoJS.AES.encrypt(CryptoJS.AES.encrypt(msg, global.extraKey).toString(),global.key);
+        } else {
+          var encrypted = CryptoJS.AES.encrypt(msg, global.key);
+        }
+        socket.emit('chat_message', {
+          message: encrypted.toString()
+        });
+      }
       $('#m').val('');
     }
     return false;
   });
   socket.on('chat_message', function(data) {
     var sender = CryptoJS.AES.decrypt(data.sender, global.key).toString(CryptoJS.enc.Utf8);
-    var msg = CryptoJS.AES.decrypt(data.message, global.key).toString(CryptoJS.enc.Utf8);
+    if(global.extraKey != null) {
+      var msg = CryptoJS.AES.decrypt(data.message, global.key).toString(CryptoJS.enc.Utf8);
+      msg = CryptoJS.AES.decrypt(msg, global.extraKey).toString(CryptoJS.enc.Utf8);
+    } else {
+      var msg = CryptoJS.AES.decrypt(data.message, global.key).toString(CryptoJS.enc.Utf8);
+    }
     $('#messages').append('<li>~ ' + sender + ": <span class='message-text'>" + msg + '</span></li>');
   });
   socket.on('info_message', function(data) {
