@@ -6,6 +6,11 @@ var Chat = require('./chat')(io);
 
 app.use(express.static('htdocs'));
 
-http.listen(3004, function(){
-  console.log('listening on *:3004');
+var port;
+if(process.argv[2] != undefined) {
+  port = process.argv[2];
+}
+
+http.listen(port, function(){
+  console.log('listening on *:' + port);
 });
