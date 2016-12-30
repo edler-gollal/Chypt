@@ -1,8 +1,11 @@
-var joinedChat = false;
+var global = {
+  joinedChat: false,
+  key: null
+}
 
 $(document).ready(function(){
   $('form').submit(function(){
-    if(!joinedChat) {
+    if(!global.joinedChat) {
       var msg = $('#m').val()
       if(msg != "") {
         document.getElementById("messages").innerHTML = "";
@@ -26,7 +29,7 @@ function loadWithAnimation(runFunction) {
   var interval = setInterval(function() {
     key += randomSymbol();
     document.getElementById("key").innerHTML = key;
-    if(Math.random() > 0.005) {
+    if(Math.random() > 0.05) {
       key = key.slice(0,-1);
     }
 
@@ -34,8 +37,9 @@ function loadWithAnimation(runFunction) {
     $('#loadingField').css('width', percentage + '%');
 
     if(key.length >= 40) {
+      global.key = key;
       clearInterval(interval);
-      //document.getElementById("messages").innerHTML = "";
+      document.getElementById("messages").innerHTML = "";
       runFunction();
       $('#loadingField').css('width', '0%');
     }
@@ -43,42 +47,38 @@ function loadWithAnimation(runFunction) {
 }
 
 function joinChat(name) {
-  joinedChat = true;
+  global.joinedChat = true;
   var socket = io('/Chat');
+  socket.emit('set_key', {key: global.key});
   changeName(name);
-
   $('form').submit(function(){
     var msg = $('#m').val()
     if(msg != "") {
       socket.emit('chat_message', {
-        message: msg
+        message: CryptoJS.AES.encrypt(msg, global.key).toString()
       });
       $('#m').val('');
     }
     return false;
   });
-
   socket.on('chat_message', function(data) {
-    $('#messages').append('<li>~ ' + data.sender + ": <span class='message-text'>" + data.message + '</span></li>');
+    var sender = CryptoJS.AES.decrypt(data.sender, global.key).toString(CryptoJS.enc.Utf8);
+    var msg = CryptoJS.AES.decrypt(data.message, global.key).toString(CryptoJS.enc.Utf8);
+    $('#messages').append('<li>~ ' + sender + ": <span class='message-text'>" + msg + '</span></li>');
   });
-
   socket.on('info_message', function(data) {
-    $('#messages').append('<li>' + data.message + '</li>');
+    var msg = CryptoJS.AES.decrypt(data.message, global.key).toString(CryptoJS.enc.Utf8);
+    $('#messages').append('<li>' + msg + '</li>');
   });
-
   socket.on('name_change', function(data) {
     changeName(data.newname);
   })
-
   function changeName(newname) {
     socket.emit('name_change', {newname: newname});
   }
 }
 
 function randomSymbol() {
-  var symbol;
-  var symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz§$%&@#!?ß1234567890";
-  var randomNumber = parseInt(Math.random() * symbols.length);
-  symbol = symbols.charAt(randomNumber);
-  return symbol;
+  var symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
+  return symbols.charAt(parseInt(Math.random() * symbols.length));
 }

